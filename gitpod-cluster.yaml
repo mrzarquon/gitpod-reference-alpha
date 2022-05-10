@@ -9,24 +9,8 @@ metadata:
     team: "cx"
     project: "gitpod manual deploy"
 
-#
-# EKS Example Cluster
-# Always provision first with:
-# eksctl create cluster --config-file gitpod-cluster.yaml --without-nodegroup
-#
-# update kubeconfig : aws eks update-kubeconfig --name lab
-#
-# To ensure the cluster is deployed only so you can then install calico
-# 
-# kubectl delete ds aws-node -n kube-system
-# kubectl apply -f https://docs.projectcalico.org/manifests/calico-vxlan.yaml
-#
-# eksctl create nodegroup --config-file gitpod-cluster.yaml --include workspace
-#
-# install cert-manager, with hostport:true, fsGroup:1001
-#
-# curl https://kots.io/install | bash
-# kubectl kots install gitpod -n gitpod
+
+
 
 iam:
   withOIDC: true
