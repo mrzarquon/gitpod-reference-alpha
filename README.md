@@ -25,3 +25,8 @@ kubectl cert-manager x install --namespace cert-manager --set installCRDs=true \
 
 curl https://kots.io/install | bash
 kubectl kots install gitpod -n gitpod
+
+## diagrams
+
+https://diagrams.mingrammer.com/docs/getting-started/installation
+

@@ -1,7 +1,12 @@
 # Commands to start on workspace startup
 tasks:
+  - init: poetry setup
+    command: curl -sSL https://install.python-poetry.org | python3 -
   - init: poetry install
     command: poetry install
+  - init: graphviz
+    command: sudo apt install graphviz
+  
 # Ports to expose on workspace startup
 github:
   prebuilds:
