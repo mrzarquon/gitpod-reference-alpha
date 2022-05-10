@@ -4,8 +4,6 @@ This is a POC repo meant to illustrate how we can generate guide material around
 
 It uses python package ["diagrams"](https://diagrams.mingrammer.com/) to render the visual you see below.
 
-There are 
-
 ## Basic EKSCTL driven example
 
 Using the provided gitpod-cluster.yml and eksctl, you can provision a basic EKS cluster with the baseline dependencies for a self contained installation. This does not use any external dependencies at the moment, so should be considered a throw away environment. 
@@ -50,6 +48,7 @@ Edit deployment for fsGroup setting
 ### Install kots (Replicated) and Gitpod
 curl https://kots.io/install | bash
 kubectl kots install gitpod -n gitpod
+
 
 ## diagrams
 
