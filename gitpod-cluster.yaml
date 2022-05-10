@@ -1,0 +1,237 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+# at minimum change the name, region, and tags applied to all resources
+metadata:
+  name: lab
+  region: eu-west-1
+  version: "1.22"
+  tags:
+    team: "cx"
+    project: "gitpod manual deploy"
+
+#
+# EKS Example Cluster
+# Always provision first with:
+# eksctl create cluster --config-file gitpod-cluster.yaml --without-nodegroup
+#
+# update kubeconfig : aws eks update-kubeconfig --name lab
+#
+# To ensure the cluster is deployed only so you can then install calico
+# 
+# kubectl delete ds aws-node -n kube-system
+# kubectl apply -f https://docs.projectcalico.org/manifests/calico-vxlan.yaml
+#
+# eksctl create nodegroup --config-file gitpod-cluster.yaml --include workspace
+#
+# install cert-manager, with hostport:true, fsGroup:1001
+#
+# curl https://kots.io/install | bash
+# kubectl kots install gitpod -n gitpod
+
+iam:
+  withOIDC: true
+
+  serviceAccounts:
+    - metadata:
+        name: aws-load-balancer-controller
+        namespace: kube-system
+      wellKnownPolicies:
+        awsLoadBalancerController: true
+    - metadata:
+        name: efs-csi-controller-sa
+        namespace: kube-system
+      wellKnownPolicies:
+        efsCSIController: true
+    - metadata:
+        name: ebs-csi-controller-sa
+        namespace: kube-system
+      wellKnownPolicies:
+        ebsCSIController: true
+    - metadata:
+        name: cluster-autoscaler
+        namespace: kube-system
+      wellKnownPolicies:
+        autoScaler: true
+    - metadata:
+        name: cert-manager
+        namespace: cert-manager
+      wellKnownPolicies:
+        certManager: true
+
+
+# By default we create a dedicated VPC for the cluster
+# You can use an existing VPC by supplying private and/or public subnets. Please check
+# https://eksctl.io/usage/vpc-networking/#use-existing-vpc-other-custom-configuration
+vpc:
+  autoAllocateIPv6: false
+  nat:
+    # For production environments user HighlyAvailable
+    # https://eksctl.io/usage/vpc-networking/#nat-gateway
+    gateway: Single
+
+# Enable EKS control plane logging
+# https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["*"]
+
+privateCluster:
+  enabled: false
+  additionalEndpointServices:
+    - "autoscaling"
+    - "logs"
+
+
+# Managed Groups
+#
+# services: Runs front end, DB if self contained, container registry
+# IDE frontend (server, proxy, etc)
+#
+# workspaces: runs active container sessions that users are developing in
+#   This is the heaviest under load resource once users are working
+# workspace-workers: runs prebuild tasks, image creation, etc
+#   These are under the most load while provision workspaces for users but
+#   But aren't used much unless auto-prebuilds are enabled
+managedNodeGroups:
+  - name: services
+    amiFamily: Ubuntu2004
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 4
+    maxPodsPerNode: 110
+    # because of AWS addons
+    disableIMDSv1: false
+    # Please configure the size of the volume and additional features
+    # https://eksctl.io/usage/schema/#nodeGroups-volumeType
+    # https://aws.amazon.com/es/ebs/pricing/
+    volumeSize: 300
+    volumeType: gp3
+    volumeIOPS: 6000
+    volumeThroughput: 500
+    ebsOptimized: true
+    # Use private subnets for nodes
+    # https://eksctl.io/usage/vpc-networking/#use-private-subnets-for-initial-nodegroup
+    privateNetworking: true
+    # specifying ssh access but only public key enables
+    # ssh over aws ssm
+    # https://aws.amazon.com/premiumsupport/knowledge-center/systems-manager-ssh-vpc-resources/
+    ssh:
+      publicKeyName: chris.barker
+
+    tags:
+      k8s.io/cluster-autoscaler/enabled: "true"
+      k8s.io/cluster-autoscaler/gitpod: "owned"
+
+
+    labels:
+      gitpod.io/workload_meta: "true"
+      gitpod.io/workload_ide: "true"
+    
+    iam:
+      withAddonPolicies:
+        albIngress: true
+        autoScaler: true
+        cloudWatch: true
+        certManager: true
+        efs: true
+        ebs: true
+
+    spot: false
+    # 8cpu, 32 ram: m6i.2xlarge
+    instanceTypes: ["m6i.xlarge"]
+
+
+    # by using prebootstrap commands we ensure containerd without resorting to
+    # override bootstrap command, allowing us to aws autopicked AMIs
+    preBootstrapCommands: 
+      - echo "export USE_MAX_PODS=false" >> /etc/profile.d/bootstrap.sh
+      - sed -i '/^set -o errexit/a\\nsource /etc/profile.d/bootstrap.sh' /etc/eks/bootstrap.sh
+
+  - name: workspace
+    amiFamily: Ubuntu2004
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 6
+    maxPodsPerNode: 110
+    disableIMDSv1: false
+    volumeSize: 300
+    volumeType: gp3
+    volumeIOPS: 6000
+    volumeThroughput: 500
+    ebsOptimized: true
+    privateNetworking: true
+    ssh:
+      publicKeyName: chris.barker
+
+    tags:
+      k8s.io/cluster-autoscaler/enabled: "true"
+      k8s.io/cluster-autoscaler/gitpod: "owned"
+      # # enable only for GPU workloads
+      # # GPU autoscale tags
+      # k8s.io/cluster-autoscaler/node-template/taint/dedicated: nvidia.com/gpu=true
+      # k8s.io/cluster-autoscaler/node-template/label/nvidia.com/gpu: 'true'
+
+
+    labels:
+      gitpod.io/workload_workspace_regular: "true"
+      gitpod.io/workload_workspace_services: "true"
+      gitpod.io/workload_workspace_headless: "true"
+
+    
+    iam:
+      withAddonPolicies:
+        autoScaler: true
+        cloudWatch: true
+        efs: true
+        ebs: true
+
+    spot: false
+    # for GPU use: p3.2xlarge or p3.8xlarge - AWS autopicks GPU AMI for us
+    # for regular: m6i.4xlarge for 20 workspaces
+    instanceTypes: ["m6i.4xlarge"]
+
+    preBootstrapCommands: 
+      - echo "export USE_MAX_PODS=false" >> /etc/profile.d/bootstrap.sh
+      - sed -i '/^set -o errexit/a\\nsource /etc/profile.d/bootstrap.sh' /etc/eks/bootstrap.sh
+
+  # - name: workspace-workers
+  #   amiFamily: Ubuntu2004
+  #   desiredCapacity: 2
+  #   minSize: 1
+  #   maxSize: 4
+  #   maxPodsPerNode: 110
+  #   disableIMDSv1: false
+  #   volumeSize: 300
+  #   volumeType: gp3
+  #   volumeIOPS: 6000
+  #   volumeThroughput: 500
+  #   ebsOptimized: true
+  #   privateNetworking: true
+  #   ssh:
+  #     publicKeyName: chris.barker
+
+  #   tags:
+  #     k8s.io/cluster-autoscaler/enabled: "true"
+  #     k8s.io/cluster-autoscaler/gitpod: "owned"
+
+
+  #   labels:
+  #     gitpod.io/workload_workspace_services: "true"
+  #     gitpod.io/workload_workspace_headless: "true"
+
+    
+  #   iam:
+  #     withAddonPolicies:
+  #       autoScaler: true
+  #       cloudWatch: true
+  #       efs: true
+  #       ebs: true
+
+  #   spot: false
+  #   # these are compute heavy workers doing prebuilds, less memory instensive work
+  #   # 16 cpu, 32 ram
+  #   instanceTypes: ["c6i.4xlarge"]
+
+  #   preBootstrapCommands: 
+  #     - echo "export USE_MAX_PODS=false" >> /etc/profile.d/bootstrap.sh
+  #     - sed -i '/^set -o errexit/a\\nsource /etc/profile.d/bootstrap.sh' /etc/eks/bootstrap.sh

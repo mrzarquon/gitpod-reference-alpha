@@ -1,0 +1,12 @@
+# Commands to start on workspace startup
+tasks:
+  - init: poetry install
+    command: poetry install
+# Ports to expose on workspace startup
+github:
+  prebuilds:
+    master: true
+    pullRequests: true
+    addCheck: false
+    addComment: false
+    addBadge: true
