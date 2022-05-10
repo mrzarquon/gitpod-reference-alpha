@@ -30,3 +30,5 @@ kubectl kots install gitpod -n gitpod
 
 https://diagrams.mingrammer.com/docs/getting-started/installation
 
+
+![](aws_single_region_multizone.png)
