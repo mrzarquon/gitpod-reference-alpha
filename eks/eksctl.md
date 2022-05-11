@@ -4,6 +4,15 @@ Using the provided gitpod-cluster.yml and eksctl, you can provision a basic EKS 
 
 If you do use ACME certificates and Route53, it will require additional steps for DNS configuration outside the scope of this document.
 
+The eksctl configuration file is [here](multizone.yml), updating the region, name, and tags accordingly at top should be sufficient.
+
+This document assume's you have installed:
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [eksctl](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html)
+- [cert-manager kubectl plugin](https://cert-manager.io/docs/installation/kubectl-plugin/)
+- [aws cli version 2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+
+
 The steps are:
 - Provision EKS Cluster without nodegroups
 - Remove AWS Networking and replace with Calico CNI for higher pod capacity
