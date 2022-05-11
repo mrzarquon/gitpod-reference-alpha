@@ -13,7 +13,7 @@ The steps are:
 
 
 ### Create Cluster
-`eksctl create cluster --config-file gitpod-cluster.yaml --without-nodegroup`
+`eksctl create cluster --config-file multizone.yml --without-nodegroup`
 
 update kubeconfig : `aws eks update-kubeconfig --name lab`
 
@@ -27,7 +27,7 @@ kubectl apply -f https://docs.projectcalico.org/manifests/calico-vxlan.yaml
 
 ### Create node groups
 ```
-eksctl create nodegroup --config-file gitpod-cluster.yaml --include workspace
+eksctl create nodegroup --config-file multizone.yml --include workspace
 ```
 
 ### Install Cert-manager
